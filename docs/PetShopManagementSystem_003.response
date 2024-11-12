@@ -1,0 +1,62 @@
+{
+    "models": [
+        {
+            "classname": "Customer",
+            "code": "class Customer(Base):\n    \"\"\"\n    description: Table to store customer information including balance and credit limit.\n    \"\"\"\n    __tablename__ = 'customers'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    name = Column(String, nullable=False)\n    balance = Column(Integer, nullable=False)  # Derived\n    credit_limit = Column(Integer, nullable=False)",
+            "description": "Table to store customer information including balance and credit limit.",
+            "name": "Customer"
+        },
+        {
+            "classname": "Order",
+            "code": "class Order(Base):\n    \"\"\"\n    description: Table to store order details including total amount and shipment status.\n    \"\"\"\n    __tablename__ = 'orders'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    customer_id = Column(Integer, ForeignKey('customers.id'))\n    date_shipped = Column(DateTime, nullable=True)\n    amount_total = Column(Integer, nullable=False)  # Derived",
+            "description": "Table to store order details including total amount and shipment status.",
+            "name": "Order"
+        },
+        {
+            "classname": "Item",
+            "code": "class Item(Base):\n    \"\"\"\n    description: Table to store item details including quantity, unit price, and amount.\n    \"\"\"\n    __tablename__ = 'items'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    order_id = Column(Integer, ForeignKey('orders.id'))\n    product_id = Column(Integer, ForeignKey('products.id'))\n    quantity = Column(Integer, nullable=False)\n    unit_price = Column(Integer, nullable=False)  # Copied\n    amount = Column(Integer, nullable=False)  # Derived",
+            "description": "Table to store item details including quantity, unit price, and amount.",
+            "name": "Item"
+        },
+        {
+            "classname": "Product",
+            "code": "class Product(Base):\n    \"\"\"\n    description: Table to store product information including unit price.\n    \"\"\"\n    __tablename__ = 'products'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    name = Column(String, nullable=False)\n    unit_price = Column(Integer, nullable=False)",
+            "description": "Table to store product information including unit price.",
+            "name": "Product"
+        }
+    ],
+    "rules": [
+        {
+            "name": "Customer Balance Derivation",
+            "description": "Derive the balance of a customer as the sum of order amounts where the order has not been shipped.",
+            "use_case": "Ensure customer account balance reflects unshipped orders.",
+            "code": "Rule.sum(derive=Customer.balance, as_sum_of=Order.amount_total, where=lambda row: row.date_shipped is None)"
+        },
+        {
+            "name": "Order Total Amount Derivation",
+            "description": "Derive the total amount of an order as the sum of item amounts.",
+            "use_case": "Ensure order total reflects the sum of its items.",
+            "code": "Rule.sum(derive=Order.amount_total, as_sum_of=Item.amount)"
+        },
+        {
+            "name": "Item Amount Calculation",
+            "description": "Calculate item amount as a product of quantity and unit price.",
+            "use_case": "Ensure item amount reflects quantity times unit price.",
+            "code": "Rule.formula(derive=Item.amount, as_expression=lambda row: row.quantity * row.unit_price)"
+        },
+        {
+            "name": "Copy Unit Price from Product to Item",
+            "description": "Copies the unit price from the Product table to the Item table.",
+            "use_case": "Maintain consistency of unit prices between products and items.",
+            "code": "Rule.copy(derive=Item.unit_price, from_parent=Product.unit_price)"
+        },
+        {
+            "name": "Credit Limit Constraint",
+            "description": "Prevent any customer from having a balance exceeding their credit limit.",
+            "use_case": "Ensure customers do not exceed their available credit limit.",
+            "code": "Rule.constraint(validate=Customer, as_condition=lambda row: row.balance <= row.credit_limit, error_msg=\"Customer balance ({row.balance}) exceeds credit limit ({row.credit_limit})\")"
+        }
+    ],
+    "test_data": "from datetime import date\n\n# Creating test data for products\nproduct1 = Product(id=1, name='Pet Food', unit_price=20)\nproduct2 = Product(id=2, name='Pet Toy', unit_price=10)\nproduct3 = Product(id=3, name='Pet Bed', unit_price=50)\nproduct4 = Product(id=4, name='Pet Carrier', unit_price=80)\n\n# Creating test data for customers\ncustomer1 = Customer(id=1, name='Alice', balance=150, credit_limit=200)\ncustomer2 = Customer(id=2, name='Bob', balance=90, credit_limit=100)\ncustomer3 = Customer(id=3, name='Charlie', balance=0, credit_limit=300)\ncustomer4 = Customer(id=4, name='Diana', balance=60, credit_limit=150)\n\n# Creating test data for orders\norder1 = Order(id=1, customer_id=1, date_shipped=None, amount_total=100)\norder2 = Order(id=2, customer_id=2, date_shipped=date(2023, 7, 15), amount_total=90)\norder3 = Order(id=3, customer_id=3, date_shipped=None, amount_total=0)\norder4 = Order(id=4, customer_id=4, date_shipped=date(2023, 5, 20), amount_total=60)\n\n# Creating test data for items\nitem1 = Item(id=1, order_id=1, product_id=1, quantity=5, unit_price=20, amount=100)\nitem2 = Item(id=2, order_id=2, product_id=2, quantity=9, unit_price=10, amount=90)\nitem3 = Item(id=3, order_id=4, product_id=3, quantity=1, unit_price=50, amount=50)\nitem4 = Item(id=4, order_id=4, product_id=4, quantity=1, unit_price=80, amount=80)",
+    "name": "PetShopManagementSystem"
+}
